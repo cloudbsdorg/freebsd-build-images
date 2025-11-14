@@ -1,0 +1,7 @@
+ARG FREEBSD_RELEASE="14.3"
+FROM freebsd/freebsd-runtime:${FREEBSD_RELEASE}
+
+#Update base components and install dependencies
+RUN sed -EI -e s/quarterly/latest/ /etc/pkg/FreeBSD.conf
+RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg bootstrap -r FreeBSD
+RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg update
