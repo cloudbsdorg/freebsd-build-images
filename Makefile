@@ -41,9 +41,10 @@ push:
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCHITECTURES); do \
 		  for dir in $(DIRS); do \
+		    echo "Pushing FreeBSD $$version:$$arch for $$dir"; \
 			if grep -q "^$$version:$$arch$$" $$dir/RELEASES; then \
 					echo "Pushing FreeBSD $$version:$$arch for $$dir"; \
-					podman push ${DOMAIN}/${ORG}/${IMGBASE}-$$dir-$$arch:$$version | true;\
+					podman push ${DOMAIN}/${ORG}/${IMGBASE}-$$dir-$$arch:$$version ;\
 			fi; \
 		  done; \
 		done; \
