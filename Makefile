@@ -26,8 +26,10 @@ build:
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCHITECTURES); do \
 		  for dir in $(DIRS); do \
-			echo "Building FreeBSD $$version:$$arch for $$dir"; \
-			podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f $$dir/Containerfile -t docker.io/cloudbsd/freebsd-build-$$dir-$$arch:$$version ;\
+			if grep -q "^$$version:$$arch$$" $$dir/RELEASES; then \
+				  echo "Building FreeBSD $$version:$$arch for $$dir"; \
+				  podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f $$dir/Containerfile -t docker.io/cloudbsd/freebsd-build-$$dir-$$arch:$$version ;\
+			fi; \
 		  done; \
 		done; \
 	done
@@ -36,8 +38,10 @@ push:
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCHITECTURES); do \
 		  for dir in $(DIRS); do \
-			echo "Pushing FreeBSD $$version:$$arch for $$dir"; \
-			podman push cloudbsd/freebsd-build-$$dir-$$arch:$$version ;\
+			if grep -q "^$$version:$$arch$$" $$dir/RELEASES; then \
+					echo "Pushing FreeBSD $$version:$$arch for $$dir"; \
+					podman push cloudbsd/freebsd-build-$$dir-$$arch:$$version ;\
+			fi; \
 		  done; \
 		done; \
 	done
