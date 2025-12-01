@@ -2,6 +2,9 @@ ARG FREEBSD_RELEASE="14.3"
 ARG ARCHITECTURE="amd64"
 FROM ghcr.io/freebsd/freebsd-runtime:${FREEBSD_RELEASE}
 
+ARG FREEBSD_RELEASE
+ARG ARCHITECTURE
+
 #Update base components and install dependencies
 RUN sed -EI -e s/quarterly/latest/ /etc/pkg/FreeBSD.conf
 RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg bootstrap -r FreeBSD
