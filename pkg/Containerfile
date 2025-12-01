@@ -6,3 +6,5 @@ FROM ghcr.io/freebsd/freebsd-runtime:${FREEBSD_RELEASE}
 RUN sed -EI -e s/quarterly/latest/ /etc/pkg/FreeBSD.conf
 RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg bootstrap -r FreeBSD
 RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg update
+ADD ./ports /usr/ports
+RUN git clone https://github.com/freebsd/freebsd-src.git -b releng/${FREEBSD_RELEASE} /usr/src
