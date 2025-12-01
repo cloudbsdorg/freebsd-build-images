@@ -4,11 +4,11 @@ IMGBASE := freebsd-build
 FREEBSD_VERSIONS := 14.2 14.3
 ARCHITECTURES := amd64 aarch64
 CURRENT_ARCHITECTURE := `uname -m`
-DIRS := openjdk8 openjdk11 openjdk17 openjdk18 openjdk19 openjdk20 openjdk21 openjdk22 openjdk23 openjdk24 openjdk25
+DIRS := $(filter-out pkg .%, $(patsubst %/,%,$(wildcard */)))
 
 default: all
 
-all: prebuild build-pkg push-pkg build push cleanup
+all: prebuild build-pkg push-pkg build push clean
 
 prebuild:
 	@echo "ORG: ${ORG}"
@@ -24,7 +24,7 @@ ports:
 	git clone https://github.com/freebsd/freebsd-ports.git -b main pkg/ports
 .endif
 
-cleanup:
+clean:
 	@rm -rf pkg/ports
 
 build-pkg: ports
