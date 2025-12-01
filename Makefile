@@ -20,9 +20,9 @@ prebuild:
 	@echo "DIRS: ${DIRS}"
 
 ports:
-ifeq (,$(wildcard pkg/ports))
+.if !exists(pkg/ports)
 	git clone https://github.com/freebsd/freebsd-ports.git -b main pkg/ports
-endif
+.endif
 
 cleanup:
 	@rm -rf pkg/ports
