@@ -2,7 +2,7 @@ ORG := cloudbsd
 DOMAIN := docker.io
 IMGBASE := freebsd-build
 FREEBSD_VERSIONS := 14.2 14.3
-ARCHITECTURES := amd64
+ARCHITECTURES := amd64 aarch64
 CURRENT_ARCHITECTURE := `uname -m`
 DIRS := openjdk8 openjdk11 openjdk17 openjdk18 openjdk19 openjdk20 openjdk21 openjdk22 openjdk23 openjdk24 openjdk25
 
@@ -68,4 +68,19 @@ push:
 		done; \
 	done
 
-.PHONY: prebuild all build push build-pkg push-pkg cleanup ports default
+manifestmerge:
+	@for version in $(FREEBSD_VERSIONS); do \
+		for dir in $(DIRS); do \
+			podman manifest create ${DOMAIN}/${ORG}/${IMGBASE}-$$dir:$$version ; \
+			for arch in $(ARCHITECTURES); do \
+				COUNT=$$(podman search --list-tags ${DOMAIN}/${ORG}/${IMGBASE}-$$dir-$$arch  2>/dev/null | grep $$version | wc -l ); \
+				if [ "$$COUNT" -eq 1 ]; then \
+					echo "Adding $$arch image to ${DOMAIN}/${ORG}/${IMGBASE}-$$dir:$$version"; \
+					podman manifest add ${DOMAIN}/${ORG}/${IMGBASE}-$$dir:$$version ${DOMAIN}/${ORG}/${IMGBASE}-$$dir-$$arch:$$version ;\
+				fi; \
+			done; \
+		  	podman manifest push ${DOMAIN}/${ORG}/${IMGBASE}-$$dir:$$version ; \
+		done; \
+	done
+
+.PHONY: prebuild all build push build-pkg push-pkg cleanup ports manifestmerge default
