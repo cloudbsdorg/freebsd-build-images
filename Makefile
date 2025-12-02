@@ -88,6 +88,7 @@ push: build
 manifestmerge: push
 	@for version in $(FREEBSD_VERSIONS); do \
 		for dir in $(DIRS); do \
+			podman manifest rm ${DOMAIN}/${ORG}/${IMGBASE}-$$dir:$$version | true ; \
 			podman manifest create ${DOMAIN}/${ORG}/${IMGBASE}-$$dir:$$version ; \
 			for arch in $(ARCHITECTURES); do \
 				COUNT=$$(podman search --list-tags ${DOMAIN}/${ORG}/${IMGBASE}-$$dir-$$arch  2>/dev/null | grep $$version | wc -l ); \
@@ -103,6 +104,7 @@ manifestmerge: push
 
 manifestmerge-pkg: push-pkg
 	@for version in $(FREEBSD_VERSIONS); do \
+		podman manifest rm ${DOMAIN}/${ORG}/${IMGBASE}-pkg:$$version | true ; \
 		podman manifest create ${DOMAIN}/${ORG}/${IMGBASE}-pkg:$$version ; \
 		for arch in $(ARCHITECTURES); do \
 			COUNT=$$(podman search --list-tags ${DOMAIN}/${ORG}/${IMGBASE}-pkg-$$arch  2>/dev/null | grep $$version | wc -l ); \
@@ -116,6 +118,7 @@ manifestmerge-pkg: push-pkg
 
 manifestmerge-ports: push-ports
 	@for version in $(FREEBSD_VERSIONS); do \
+		podman manifest rm ${DOMAIN}/${ORG}/${IMGBASE}-ports:$$version | true ; \
 		podman manifest create ${DOMAIN}/${ORG}/${IMGBASE}-ports:$$version ; \
 		for arch in $(ARCHITECTURES); do \
 			COUNT=$$(podman search --list-tags ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch  2>/dev/null | grep $$version | wc -l ); \
