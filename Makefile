@@ -1,7 +1,7 @@
 ORG := cloudbsd
 DOMAIN := docker.io
 IMGBASE := freebsd-build
-FREEBSD_VERSIONS := 14.2 14.3
+FREEBSD_VERSIONS := 14.3 14.2
 ARCHITECTURES := amd64 aarch64
 CURRENT_ARCHITECTURE := `uname -m`
 DIRS := $(filter-out pkg .%, $(patsubst %/,%,$(wildcard */)))

@@ -1,9 +1,21 @@
+ARG DOMAIN="docker.io"
+ARG ORG="cloudbsd"
+ARG SRCIMAGENAME="freebsd-build-pkg"
 ARG FREEBSD_RELEASE="14.3"
 ARG ARCHITECTURE="amd64"
-FROM cloudbsd/freebsd-build-pkg-${ARCHITECTURE}:${FREEBSD_RELEASE}
+ARG PORT="java/openjdk8"
+FROM ${DOMAIN}/${ORG}/${SRCIMAGENAME}-${ARCHITECTURE}:${FREEBSD_RELEASE}
 
+ARG DOMAIN
+ARG ORG
+ARG SRCIMAGENAME
 ARG FREEBSD_RELEASE
 ARG ARCHITECTURE
+ARG PORT
 
-RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg update
-RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg install -y openjdk8
+RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg update && \
+    env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg install -y ${PORT} || \
+    (echo "Package installation failed, will build from source" && \
+     cd /usr/ports/${PORT} && \
+     make BATCH=YES install )
+

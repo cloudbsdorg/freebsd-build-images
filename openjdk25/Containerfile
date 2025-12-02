@@ -4,6 +4,10 @@ FROM cloudbsd/freebsd-build-pkg-${ARCHITECTURE}:${FREEBSD_RELEASE}
 
 ARG FREEBSD_RELEASE
 ARG ARCHITECTURE
+ARG PORT="java/openjdk25"
 
-RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg update
-RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg install -y openjdk25
+RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg update && \
+    env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg install -y ${PORT} || \
+    (echo "Package installation failed, will build from source" && \
+     cd /usr/ports/${PORT} && \
+     make BATCH=YES install )

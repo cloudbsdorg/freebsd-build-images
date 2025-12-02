@@ -1,14 +1,32 @@
+ARG DOMAIN="ghcr.io"
+ARG ORG="freebsd"
+ARG SRCIMAGENAME="freebsd-runtime"
 ARG FREEBSD_RELEASE="14.3"
 ARG ARCHITECTURE="amd64"
-FROM ghcr.io/freebsd/freebsd-runtime:${FREEBSD_RELEASE}
+FROM ${DOMAIN}/${ORG}/${SRCIMAGENAME}:${FREEBSD_RELEASE}
 
+ARG DOMAIN
+ARG ORG
+ARG SRCIMAGENAME
 ARG FREEBSD_RELEASE
 ARG ARCHITECTURE
 
-#Update base components and install dependencies
-RUN sed -EI -e s/quarterly/latest/ /etc/pkg/FreeBSD.conf
-RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg bootstrap -r FreeBSD
-RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg update
-RUN env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg install -y git
+# Copy the ports collection into the system
 ADD ./ports /usr/ports
+
+#Update base components and install dependencies
+RUN sed -EI -e s/quarterly/latest/ /etc/pkg/FreeBSD.conf && \
+    env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg bootstrap -r FreeBSD && \
+    env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg update && \
+    env ASSUME_ALWAYS_YES=yes IGNORE_OS_VERSION=yes pkg install -y git || \
+    (echo "Package installation failed, will build from source" && \
+         if [ ! -x /usr/bin/make ]; then \
+             echo "Installing make from base.txz" && \
+             fetch https://download.freebsd.org/releases/${ARCHITECTURE}/${FREEBSD_RELEASE}-RELEASE/base.txz && \
+             tar -xf base.txz -C / | true && \
+             rm base.txz; \
+         fi && \
+     cd /usr/ports/devel/git && \
+     make UNAME_r=${FREEBSD_RELEASE}-RELEASE BATCH=YES install )
+
 RUN git clone https://github.com/freebsd/freebsd-src.git -b releng/${FREEBSD_RELEASE} /usr/src
