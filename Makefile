@@ -1,14 +1,14 @@
 ORG := cloudbsd
 DOMAIN := docker.io
 IMGBASE := freebsd-build
-FREEBSD_VERSIONS := 14.3 14.2
+FREEBSD_VERSIONS := 15.0 14.3 14.2
 ARCHITECTURES := amd64 aarch64
 CURRENT_ARCHITECTURE := `uname -m`
-DIRS := $(filter-out pkg .%, $(patsubst %/,%,$(wildcard */)))
+DIRS != ls -d */ 2>/dev/null | sed 's|/||' | grep -v '^pkg$$' | grep -v '^\.'
 
 default: all
 
-all: prebuild build-pkg push-pkg build push clean
+all: prebuild push
 
 prebuild:
 	@echo "ORG: ${ORG}"
@@ -20,14 +20,31 @@ prebuild:
 	@echo "DIRS: ${DIRS}"
 
 ports:
-.if !exists(pkg/ports)
-	git clone https://github.com/freebsd/freebsd-ports.git -b main pkg/ports
+.if !exists(ports/ports)
+	git clone https://github.com/freebsd/freebsd-ports.git -b main ports/ports
 .endif
 
 clean:
 	@rm -rf pkg/ports
 
-build-pkg: ports
+
+build-ports: ports
+	@for version in $(FREEBSD_VERSIONS); do \
+		for arch in $(CURRENT_ARCHITECTURE); do \
+			echo "Building FreeBSD $$version:$$arch for ports"; \
+			podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch:$$version ;\
+		done; \
+	done
+
+push-ports: build-ports
+	@for version in $(FREEBSD_VERSIONS); do \
+		for arch in $(CURRENT_ARCHITECTURE); do \
+			echo "Pushing docker.io/cloudbsd/freebsd-build-ports-$$arch:$$version"; \
+			podman push ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch:$$version ;\
+		done; \
+	done
+
+build-pkg: manifestmerge-ports
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(CURRENT_ARCHITECTURE); do \
 			echo "Building FreeBSD $$version:$$arch for pkg"; \
@@ -35,7 +52,7 @@ build-pkg: ports
 		done; \
 	done
 
-push-pkg:
+push-pkg: build-pkg
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(CURRENT_ARCHITECTURE); do \
 			echo "Pushing docker.io/cloudbsd/freebsd-build-pkg-$$arch:$$version"; \
@@ -43,7 +60,7 @@ push-pkg:
 		done; \
 	done
 
-build:
+build: manifestmerge-ports manifestmerge-pkg
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(CURRENT_ARCHITECTURE); do \
 		  for dir in $(DIRS); do \
@@ -55,7 +72,7 @@ build:
 		done; \
 	done
 
-push:
+push: build
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(CURRENT_ARCHITECTURE); do \
 		  for dir in $(DIRS); do \
@@ -68,7 +85,7 @@ push:
 		done; \
 	done
 
-manifestmerge:
+manifestmerge: push
 	@for version in $(FREEBSD_VERSIONS); do \
 		for dir in $(DIRS); do \
 			podman manifest create ${DOMAIN}/${ORG}/${IMGBASE}-$$dir:$$version ; \
@@ -83,4 +100,31 @@ manifestmerge:
 		done; \
 	done
 
-.PHONY: prebuild all build push build-pkg push-pkg cleanup ports manifestmerge default
+
+manifestmerge-pkg: push-pkg
+	@for version in $(FREEBSD_VERSIONS); do \
+		podman manifest create ${DOMAIN}/${ORG}/${IMGBASE}-pkg:$$version ; \
+		for arch in $(ARCHITECTURES); do \
+			COUNT=$$(podman search --list-tags ${DOMAIN}/${ORG}/${IMGBASE}-pkg-$$arch  2>/dev/null | grep $$version | wc -l ); \
+			if [ "$$COUNT" -eq 1 ]; then \
+				echo "Adding $$arch image to ${DOMAIN}/${ORG}/${IMGBASE}-pkg:$$version"; \
+				podman manifest add ${DOMAIN}/${ORG}/${IMGBASE}-pkg:$$version ${DOMAIN}/${ORG}/${IMGBASE}-pkg-$$arch:$$version ;\
+			fi; \
+		done; \
+		podman manifest push ${DOMAIN}/${ORG}/${IMGBASE}-pkg:$$version ; \
+	done
+
+manifestmerge-ports: push-ports
+	@for version in $(FREEBSD_VERSIONS); do \
+		podman manifest create ${DOMAIN}/${ORG}/${IMGBASE}-ports:$$version ; \
+		for arch in $(ARCHITECTURES); do \
+			COUNT=$$(podman search --list-tags ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch  2>/dev/null | grep $$version | wc -l ); \
+			if [ "$$COUNT" -eq 1 ]; then \
+				echo "Adding $$arch image to ${DOMAIN}/${ORG}/${IMGBASE}-ports:$$version"; \
+				podman manifest add ${DOMAIN}/${ORG}/${IMGBASE}-ports:$$version ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch:$$version ;\
+			fi; \
+		done; \
+		podman manifest push ${DOMAIN}/${ORG}/${IMGBASE}-ports:$$version ; \
+	done
+
+.PHONY: prebuild all build push build-ports build-pkg push-pkg cleanup ports manifestmerge-pkg manifestmerge-ports manifestmerge default

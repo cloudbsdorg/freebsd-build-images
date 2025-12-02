@@ -1,0 +1,17 @@
+ARG DOMAIN="ghcr.io"
+ARG ORG="freebsd"
+ARG SRCIMAGENAME="freebsd-runtime"
+ARG FREEBSD_RELEASE="14.3"
+ARG ARCHITECTURE="amd64"
+FROM ${DOMAIN}/${ORG}/${SRCIMAGENAME}:${FREEBSD_RELEASE}
+
+ARG DOMAIN
+ARG ORG
+ARG SRCIMAGENAME
+ARG FREEBSD_RELEASE
+ARG ARCHITECTURE
+
+
+# Copy the ports collection into the system
+ADD ./ports /usr/ports
+

@@ -1,6 +1,6 @@
-ARG DOMAIN="ghcr.io"
-ARG ORG="freebsd"
-ARG SRCIMAGENAME="freebsd-runtime"
+ARG DOMAIN="docker.io"
+ARG ORG="cloudbsd"
+ARG SRCIMAGENAME="freebsd-build-ports"
 ARG FREEBSD_RELEASE="14.3"
 ARG ARCHITECTURE="amd64"
 FROM ${DOMAIN}/${ORG}/${SRCIMAGENAME}:${FREEBSD_RELEASE}
@@ -10,9 +10,6 @@ ARG ORG
 ARG SRCIMAGENAME
 ARG FREEBSD_RELEASE
 ARG ARCHITECTURE
-
-# Copy the ports collection into the system
-ADD ./ports /usr/ports
 
 #Update base components and install dependencies
 RUN sed -EI -e s/quarterly/latest/ /etc/pkg/FreeBSD.conf && \
