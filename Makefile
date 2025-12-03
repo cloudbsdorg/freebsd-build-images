@@ -32,7 +32,11 @@ build-ports: ports
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(CURRENT_ARCHITECTURE); do \
 			echo "Building FreeBSD $$version:$$arch for ports"; \
-			podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch:$$version ;\
+			if [ $$(echo "$$version < 15.0" | bc) -eq 1 ]; then \
+				podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch --build-arg SRCIMAGENAME=freebsd-runtime -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch:$$version ; \
+			else \
+				podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch:$$version ; \
+			fi ; \
 		done; \
 	done
 
