@@ -1,6 +1,6 @@
 ARG DOMAIN="docker.io"
 ARG ORG="cloudbsd"
-ARG SRCIMAGENAME="freebsd-build-ports"
+ARG SRCIMAGENAME="freebsd-build-ports-tree"
 ARG FREEBSD_RELEASE="14.3"
 ARG ARCHITECTURE="amd64"
 FROM ${DOMAIN}/${ORG}/${SRCIMAGENAME}:${FREEBSD_RELEASE}

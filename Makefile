@@ -50,36 +50,36 @@ prebuild:
 	@echo "DIRS: ${DIRS}"
 	@echo "DIR: ${DIR}"
 
-ports:
-.if !exists(ports/ports)
-	git clone https://github.com/freebsd/freebsd-ports.git -b main ports/ports
+fetch-ports:
+.if !exists(ports-tree)
+	git clone https://github.com/freebsd/freebsd-ports.git -b main ports-tree
 .endif
 
 clean:
-	@rm -rf pkg/ports
+	@rm -rf ports-tree
 
 
-build-ports: ports
+build-ports-tree: fetch-ports
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCH); do \
-			echo "Building FreeBSD $$version:$$arch for ports"; \
+			echo "Building FreeBSD $$version:$$arch for ports-tree"; \
 			if [ $$(echo "$$version < 15.0" | bc) -eq 1 ]; then \
-				podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch --build-arg SRCIMAGENAME=freebsd-runtime -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch:$$version ; \
+				podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch --build-arg SRCIMAGENAME=freebsd-runtime -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version ; \
 			else \
-				podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch:$$version ; \
+				podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version ; \
 			fi ; \
 		done; \
 	done
 
-push-ports: build-ports
+push-ports-tree: build-ports-tree
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCH); do \
-			echo "Pushing docker.io/cloudbsd/freebsd-build-ports-$$arch:$$version"; \
-			podman push ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch:$$version ;\
+			echo "Pushing docker.io/cloudbsd/freebsd-build-ports-tree-$$arch:$$version"; \
+			podman push ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version ;\
 		done; \
 	done
 
-build-pkg: manifestmerge-ports
+build-pkg: manifestmerge-ports-tree
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCH); do \
 			echo "Building FreeBSD $$version:$$arch for pkg"; \
@@ -95,7 +95,7 @@ push-pkg: build-pkg
 		done; \
 	done
 
-build: manifestmerge-ports manifestmerge-pkg
+build: manifestmerge-ports-tree manifestmerge-pkg
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCH); do \
 		  for dir in $(DIR); do \
@@ -154,36 +154,36 @@ manifestmerge-pkg: push-pkg
 		podman manifest push ${DOMAIN}/${ORG}/${IMGBASE}-pkg:$$version ; \
 	done
 
-manifestmerge-ports: push-ports
+manifestmerge-ports-tree: push-ports-tree
 	@for version in $(FREEBSD_VERSIONS); do \
-		podman manifest rm ${DOMAIN}/${ORG}/${IMGBASE}-ports:$$version | true ; \
-		podman manifest create ${DOMAIN}/${ORG}/${IMGBASE}-ports:$$version ; \
+		podman manifest rm ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree:$$version | true ; \
+		podman manifest create ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree:$$version ; \
 		for arch in $(ARCH); do \
-			COUNT=$$(podman search --list-tags ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch  2>/dev/null | grep $$version | wc -l ); \
+			COUNT=$$(podman search --list-tags ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch  2>/dev/null | grep $$version | wc -l ); \
 			if [ "$$COUNT" -eq 1 ]; then \
-				echo "Adding $$arch image to ${DOMAIN}/${ORG}/${IMGBASE}-ports:$$version"; \
-				podman manifest add ${DOMAIN}/${ORG}/${IMGBASE}-ports:$$version ${DOMAIN}/${ORG}/${IMGBASE}-ports-$$arch:$$version ;\
+				echo "Adding $$arch image to ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree:$$version"; \
+				podman manifest add ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree:$$version ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version ;\
 			fi; \
 		done; \
-		podman manifest push ${DOMAIN}/${ORG}/${IMGBASE}-ports:$$version ; \
+		podman manifest push ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree:$$version ; \
 	done
 
-.PHONY: help prebuild all build push build-ports build-pkg push-pkg cleanup ports manifestmerge-pkg manifestmerge-ports manifestmerge default
+.PHONY: help prebuild all build push build-ports-tree build-pkg push-pkg cleanup fetch-ports manifestmerge-pkg manifestmerge-ports-tree manifestmerge default
 
 help:
 	@echo "Available targets:"
-	@echo "  all              - Build all ports, pkg, and images, and push them"
-	@echo "  build            - Build all images in DIR (default: all) for ARCH (default: all)"
-	@echo "  push             - Build and push images in DIR (default: all) for ARCH (default: all)"
-	@echo "  ports            - Fetch the FreeBSD ports tree"
-	@echo "  build-ports      - Build the ports images"
-	@echo "  push-ports       - Push the ports images"
-	@echo "  build-pkg        - Build the pkg images"
-	@echo "  push-pkg         - Push the pkg images"
-	@echo "  manifestmerge    - Create and push multi-arch manifests for all images"
-	@echo "  clean            - Remove temporary build artifacts"
-	@echo "  prebuild         - Show build configuration"
-	@echo "  help             - Show this help message"
+	@echo "  all                  - Build all ports, pkg, and images, and push them"
+	@echo "  build                - Build all images in DIR (default: all) for ARCH (default: all)"
+	@echo "  push                 - Build and push images in DIR (default: all) for ARCH (default: all)"
+	@echo "  fetch-ports          - Fetch the FreeBSD ports tree"
+	@echo "  build-ports-tree     - Build the ports images"
+	@echo "  push-ports-tree      - Push the ports images"
+	@echo "  build-pkg            - Build the pkg images"
+	@echo "  push-pkg             - Build and push pkg images"
+	@echo "  manifestmerge        - Create and push multi-arch manifests for all images"
+	@echo "  clean                - Remove temporary build artifacts"
+	@echo "  prebuild             - Show build configuration"
+	@echo "  help                 - Show this help message"
 	@echo ""
 	@echo "Variables:"
 	@echo "  DIR              - Directory or list of directories to build (default: all)"

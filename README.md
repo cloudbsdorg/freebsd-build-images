@@ -12,8 +12,8 @@ This repository provides the infrastructure to build container images for FreeBS
 - NodeJS (versions 18, 20, 22, 23, in `www/`)
 
 The images are built using `podman` and are organized in a tiered fashion:
-1. **Ports Image**: Based on `ghcr.io/freebsd/freebsd-toolchain`, it includes the FreeBSD ports collection.
-2. **Pkg Image**: Based on the Ports image, it bootstraps `pkg`, installs `git`, and clones the FreeBSD source tree.
+1. **Ports Tree Image**: Based on `ghcr.io/freebsd/freebsd-toolchain`, it includes the FreeBSD ports collection.
+2. **Pkg Image**: Based on the Ports Tree image, it bootstraps `pkg`, installs `git`, and clones the FreeBSD source tree.
 3. **Application Images**: Based on the Pkg image, these install specific software (e.g., OpenJDK, NodeJS) from the FreeBSD ports/packages.
 
 ## Requirements
@@ -32,7 +32,7 @@ The project is organized similarly to the FreeBSD ports collection:
 ├── Makefile                # Build orchestration and automation
 ├── pkg/                    # Core image with pkg, git, and freebsd-src
 │   └── Containerfile
-├── ports/                  # Image containing the ports tree
+├── ports-tree/             # Image containing the ports tree
 │   ├── Containerfile
 │   └── ports/              # (Cloned during build) FreeBSD ports collection
 ├── java/                   # Java-related images
@@ -61,8 +61,8 @@ The build process is managed by the `Makefile`. By default, it builds for the cu
 
 - **Build specific components**:
   ```bash
-  make build-ports  # Build only the ports image
-  make build-pkg    # Build only the pkg image
+  make build-ports-tree  # Build only the ports tree image
+  make build-pkg         # Build only the pkg image
   ```
 
 - **Push images to registry**:
@@ -106,7 +106,7 @@ Each OpenJDK directory contains a `RELEASES` file that specifies which FreeBSD v
 
 ## Scripts and Automation
 
-- **`ports` target**: Clones the FreeBSD ports tree into `ports/ports` if it doesn't exist.
+- **`fetch-ports` target**: Clones the FreeBSD ports tree into `ports-tree/ports` if it doesn't exist.
 - **`manifestmerge`**: Uses `podman manifest` to create multi-arch images by combining architecture-specific tags into a single manifest under the base tag (e.g., `cloudbsd/freebsd-build-openjdk21:14.3`).
 
 ## Tests
