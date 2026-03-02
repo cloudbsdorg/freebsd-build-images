@@ -168,4 +168,27 @@ manifestmerge-ports: push-ports
 		podman manifest push ${DOMAIN}/${ORG}/${IMGBASE}-ports:$$version ; \
 	done
 
-.PHONY: prebuild all build push build-ports build-pkg push-pkg cleanup ports manifestmerge-pkg manifestmerge-ports manifestmerge default
+.PHONY: help prebuild all build push build-ports build-pkg push-pkg cleanup ports manifestmerge-pkg manifestmerge-ports manifestmerge default
+
+help:
+	@echo "Available targets:"
+	@echo "  all              - Build all ports, pkg, and images, and push them"
+	@echo "  build            - Build all images in DIR (default: all) for ARCH (default: all)"
+	@echo "  push             - Build and push images in DIR (default: all) for ARCH (default: all)"
+	@echo "  ports            - Fetch the FreeBSD ports tree"
+	@echo "  build-ports      - Build the ports images"
+	@echo "  push-ports       - Push the ports images"
+	@echo "  build-pkg        - Build the pkg images"
+	@echo "  push-pkg         - Push the pkg images"
+	@echo "  manifestmerge    - Create and push multi-arch manifests for all images"
+	@echo "  clean            - Remove temporary build artifacts"
+	@echo "  prebuild         - Show build configuration"
+	@echo "  help             - Show this help message"
+	@echo ""
+	@echo "Variables:"
+	@echo "  DIR              - Directory or list of directories to build (default: all)"
+	@echo "  ARCH             - Architecture(s) to build (default: amd64 aarch64)"
+	@echo "  FREEBSD_VERSIONS - FreeBSD version(s) to build (default: 15.0 14.3 14.2)"
+	@echo ""
+	@echo "Example:"
+	@echo "  make build DIR=java/openjdk21 ARCH=amd64"
