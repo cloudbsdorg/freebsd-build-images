@@ -13,5 +13,5 @@ ARG ARCHITECTURE
 
 
 # Copy the ports collection into the system
-ADD ./ports-tree /usr/ports
+ADD ports-tree /usr/ports
 

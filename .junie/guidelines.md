@@ -6,7 +6,7 @@ This project manages the creation of FreeBSD-based container images for various 
 
 ### Prerequisites
 
-* **Operating System**: FreeBSD (tested on 14.x, 15.x, 16.0-CURRENT).
+* **Operating System**: FreeBSD (tested on 14.x, 15.x, 16.x).
 * **Tools**: 
     - `podman`: Container engine. Note that on FreeBSD, `podman` usually requires `sudo` for rootless mode or for regular image management.
     - `make`: For automation.
@@ -21,6 +21,7 @@ The project is configured via the `Makefile` in the root directory. Key variable
 - `DOMAIN`: The container registry domain (default: `docker.io`).
 - `FREEBSD_VERSIONS`: The FreeBSD releases to build for (e.g., `15.0 14.3 14.2`).
 - `ARCHITECTURES`: Target architectures (e.g., `amd64 aarch64`).
+- `DNS`: DNS server(s) to use for `podman build` (e.g., `8.8.8.8,1.1.1.1`). Default: `8.8.8.8, 8.8.4.4, 1.1.1.1, 1.0.0.1`.
 - `DIRS`: Automatically discovered image directories by looking for folders with a `RELEASES` file (e.g., `java/openjdk21`, `www/node23`).
 
 ### Build Process

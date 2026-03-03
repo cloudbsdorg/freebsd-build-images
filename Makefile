@@ -29,10 +29,14 @@
 ORG := cloudbsd
 DOMAIN := docker.io
 IMGBASE := freebsd-build
-FREEBSD_VERSIONS := 15.0 14.3 14.2
+FREEBSD_VERSIONS := 16.snap 15.0 14.3 14.2
 ARCHITECTURES := amd64 aarch64
 ARCH ?= $(ARCHITECTURES)
 CURRENT_ARCHITECTURE ?= `uname -m`
+# DNS configuration: can be passed as a comma or space separated list (e.g., make DNS=1.1.1.1,8.8.8.8)
+DNS ?= 8.8.8.8, 8.8.4.4, 1.1.1.1, 1.0.0.1
+# DNS_ARGS converts the DNS variable into --dns=... flags for podman build
+DNS_ARGS != if [ -n "$(DNS)" ]; then echo "$(DNS)" | tr ',' ' ' | tr -s ' ' '\n' | sed 's/^/--dns=/'; fi
 DIRS != find * -type f -name RELEASES | sed 's|/RELEASES||' | sort
 DIR ?= $(DIRS)
 
@@ -47,6 +51,8 @@ prebuild:
 	@echo "FREEBSD_VERSIONS: ${FREEBSD_VERSIONS}"
 	@echo "ARCHITECTURES: ${ARCHITECTURES}"
 	@echo "ARCH: ${ARCH}"
+	@echo "DNS: ${DNS}"
+	@echo "DNS_ARGS: ${DNS_ARGS}"
 	@echo "DIRS: ${DIRS}"
 	@echo "DIR: ${DIR}"
 
@@ -59,14 +65,16 @@ clean:
 	@rm -rf ports-tree
 
 
+# build-ports-tree: Clones the ports tree and builds the ports-tree image
+# Note: FreeBSD versions < 15.0 require specific build arguments (SRCIMAGENAME)
 build-ports-tree: fetch-ports
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCH); do \
 			echo "Building FreeBSD $$version:$$arch for ports-tree"; \
-			if [ $$(echo "$$version < 15.0" | bc) -eq 1 ]; then \
-				podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch --build-arg SRCIMAGENAME=freebsd-runtime -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version ; \
+			if [ $$(echo "$$version < 15.0" | sed 's/\.snap//g' | bc) -eq 1 ]; then \
+				podman build $(DNS_ARGS) --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch --build-arg SRCIMAGENAME=freebsd-runtime -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version . ; \
 			else \
-				podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version ; \
+				podman build $(DNS_ARGS) --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version . ; \
 			fi ; \
 		done; \
 	done
@@ -74,7 +82,7 @@ build-ports-tree: fetch-ports
 push-ports-tree: build-ports-tree
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCH); do \
-			echo "Pushing docker.io/cloudbsd/freebsd-build-ports-tree-$$arch:$$version"; \
+			echo "Pushing ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version"; \
 			podman push ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version ;\
 		done; \
 	done
@@ -83,14 +91,14 @@ build-pkg: manifestmerge-ports-tree
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCH); do \
 			echo "Building FreeBSD $$version:$$arch for pkg"; \
-			podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f pkg/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-pkg-$$arch:$$version ;\
+			podman build $(DNS_ARGS) --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f pkg/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-pkg-$$arch:$$version . ;\
 		done; \
 	done
 
 push-pkg: build-pkg
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCH); do \
-			echo "Pushing docker.io/cloudbsd/freebsd-build-pkg-$$arch:$$version"; \
+			echo "Pushing ${DOMAIN}/${ORG}/${IMGBASE}-pkg-$$arch:$$version"; \
 			podman push ${DOMAIN}/${ORG}/${IMGBASE}-pkg-$$arch:$$version ;\
 		done; \
 	done
@@ -102,7 +110,7 @@ build: manifestmerge-ports-tree manifestmerge-pkg
 			if grep -q "^$$version:$$arch$$" $$dir/RELEASES; then \
 				  echo "Building FreeBSD $$version:$$arch for $$dir"; \
 				  IMGNAME=$$(echo $$dir | sed 's|/|-|g') ; \
-				  podman build --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f $$dir/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-$$IMGNAME-$$arch:$$version  ;\
+				  podman build $(DNS_ARGS) --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f $$dir/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-$$IMGNAME-$$arch:$$version . ;\
 			fi; \
 		  done; \
 		done; \
@@ -189,6 +197,7 @@ help:
 	@echo "  DIR              - Directory or list of directories to build (default: all)"
 	@echo "  ARCH             - Architecture(s) to build (default: amd64 aarch64)"
 	@echo "  FREEBSD_VERSIONS - FreeBSD version(s) to build (default: 15.0 14.3 14.2)"
+	@echo "  DNS              - DNS server(s) to use (comma or space separated, optional)"
 	@echo ""
 	@echo "Example:"
 	@echo "  make build DIR=java/openjdk21 ARCH=amd64"

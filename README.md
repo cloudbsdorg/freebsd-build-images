@@ -89,8 +89,9 @@ You can override default values by passing them to `make`:
 | `ORG` | `cloudbsd` | Container registry organization/user |
 | `DOMAIN` | `docker.io` | Container registry domain |
 | `IMGBASE` | `freebsd-build` | Base name for the generated images |
-| `FREEBSD_VERSIONS` | `15.0 14.3 14.2` | List of FreeBSD releases to build for |
+| `FREEBSD_VERSIONS` | `16.snap 15.0 14.3 14.2` | List of FreeBSD releases to build for |
 | `ARCHITECTURES` | `amd64 aarch64` | List of target architectures for manifests |
+| `DNS` | `8.8.8.8, ...` | DNS server(s) to use (comma or space separated) |
 
 Example:
 ```bash
@@ -101,7 +102,7 @@ make ORG=myrepo build
 
 Each OpenJDK directory contains a `RELEASES` file that specifies which FreeBSD version and architecture combinations are supported for that specific JDK version.
 
-- **FreeBSD Releases**: 15.0, 14.3, 14.2
+- **FreeBSD Releases**: 16.snap, 15.0, 14.3, 14.2
 - **Architectures**: amd64, aarch64
 
 ## Scripts and Automation
