@@ -32,13 +32,14 @@ The project is configured via the `Makefile` in the root directory. Key variable
    ```
 2. **Ports setup**: The `ports/` directory requires the FreeBSD ports collection.
    ```bash
-   make ports
+   make fetch-ports
    ```
-   *Note: This will clone the ports tree into `ports/ports/`.*
+   *Note: This will clone the ports tree into `ports-tree/` if missing, or update it with `git pull` if it exists. If the update fails, it will automatically perform a clean refetch.*
 
 3. **Building images**:
    - Build all images: `make build` (requires `ports` and `pkg` images to be built/pushed).
    - Build specific images: The Makefile follows a dependency chain: `ports` -> `pkg` -> application image.
+   - **Build Reporting**: The build process tracks successes and failures in a dated `.build_report_YYYYMMDD_HHMMSS` file and provides a summary at the end. Failures in one image will not stop the entire build process.
 
 ## Testing Information
 

@@ -80,6 +80,15 @@ The build process is managed by the `Makefile`. By default, it builds for the cu
   make clean
   ```
 
+### Build Reporting
+
+The `Makefile` implements a reporting mechanism to track the status of image builds and pushes.
+
+- **Non-blocking builds**: If a `podman build` fails, the script continues to build other requested images.
+- **Reporting**: Successes and failures are recorded in a dated `.build_report_YYYYMMDD_HHMMSS` file.
+- **Summary**: At the end of a `build` or `push` target, a summary report is printed to the console.
+- **Exit Status**: If any component fails to build or push, the final `make` command will exit with a non-zero status code after showing the full report.
+
 ### Build Parameters
 
 You can override default values by passing them to `make`:
@@ -107,7 +116,15 @@ Each OpenJDK directory contains a `RELEASES` file that specifies which FreeBSD v
 
 ## Scripts and Automation
 
-- **`fetch-ports` target**: Clones the FreeBSD ports tree into `ports-tree/ports` if it doesn't exist.
+- **`fetch-ports` target**: Clones the FreeBSD ports tree into `ports-tree` if it doesn't exist, or updates it with `git pull` if it already exists. If the local directory is corrupted or the update fails, it automatically performs a clean refetch.
+
+## Submodule Consideration
+
+While the ports tree is currently managed via a separate clone/pull (and ignored by git), you could convert it to a submodule if you need to pin it to a specific version. To do so:
+1. Remove `/ports-tree/` from `.gitignore`.
+2. Run `git submodule add https://github.com/freebsd/freebsd-ports.git ports-tree`.
+3. The `Makefile` will still be able to update it with `git pull`, though you may prefer `git submodule update --remote`.
+
 - **`manifestmerge`**: Uses `podman manifest` to create multi-arch images by combining architecture-specific tags into a single manifest under the base tag (e.g., `cloudbsd/freebsd-build-openjdk21:14.3`).
 
 ## Tests

@@ -38,7 +38,7 @@ DNS ?= 8.8.8.8, 8.8.4.4, 1.1.1.1, 1.0.0.1
 # DNS_ARGS converts the DNS variable into --dns=... flags for podman build
 DNS_ARGS != if [ -n "$(DNS)" ]; then echo "$(DNS)" | tr ',' ' ' | tr -s ' ' '\n' | sed 's/^/--dns=/'; fi
 DIRS != find * -type f -name RELEASES | sed 's|/RELEASES||' | sort
-DIR ?= $(DIRS)
+REPORT_FILE != echo .build_report_`date +%Y%m%d_%H%M%S`
 
 default: all
 
@@ -57,17 +57,23 @@ prebuild:
 	@echo "DIR: ${DIR}"
 
 fetch-ports:
-.if !exists(ports-tree)
-	git clone https://github.com/freebsd/freebsd-ports.git -b main ports-tree
-.endif
+	@if [ ! -d "ports-tree/.git" ]; then \
+		echo "Cloning ports-tree..."; \
+		rm -rf ports-tree; \
+		git clone https://github.com/freebsd/freebsd-ports.git -b main ports-tree; \
+	else \
+		echo "Updating existing ports-tree with git pull..."; \
+		(cd ports-tree && git pull origin main) || (echo "Git pull failed, refetching..." && rm -rf ports-tree && git clone https://github.com/freebsd/freebsd-ports.git -b main ports-tree); \
+	fi
 
 clean:
-	@rm -rf ports-tree
+	@rm -rf ports-tree .build_report_*
 
 
 # build-ports-tree: Clones the ports tree and builds the ports-tree image
 # Note: FreeBSD versions < 15.0 require specific build arguments (SRCIMAGENAME)
 build-ports-tree: fetch-ports
+	@rm -f $(REPORT_FILE)
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCH); do \
 			echo "Building FreeBSD $$version:$$arch for ports-tree"; \
@@ -76,6 +82,11 @@ build-ports-tree: fetch-ports
 			else \
 				podman build $(DNS_ARGS) --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f ports/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version . ; \
 			fi ; \
+			if [ $$? -eq 0 ]; then \
+				echo "SUCCESS: ports-tree-$$arch:$$version" >> $(REPORT_FILE); \
+			else \
+				echo "FAILURE: ports-tree-$$arch:$$version" >> $(REPORT_FILE); \
+			fi; \
 		done; \
 	done
 
@@ -84,6 +95,11 @@ push-ports-tree: build-ports-tree
 		for arch in $(ARCH); do \
 			echo "Pushing ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version"; \
 			podman push ${DOMAIN}/${ORG}/${IMGBASE}-ports-tree-$$arch:$$version ;\
+			if [ $$? -eq 0 ]; then \
+				echo "SUCCESS (push): ports-tree-$$arch:$$version" >> $(REPORT_FILE); \
+			else \
+				echo "FAILURE (push): ports-tree-$$arch:$$version" >> $(REPORT_FILE); \
+			fi; \
 		done; \
 	done
 
@@ -92,6 +108,11 @@ build-pkg: manifestmerge-ports-tree
 		for arch in $(ARCH); do \
 			echo "Building FreeBSD $$version:$$arch for pkg"; \
 			podman build $(DNS_ARGS) --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f pkg/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-pkg-$$arch:$$version . ;\
+			if [ $$? -eq 0 ]; then \
+				echo "SUCCESS: pkg-$$arch:$$version" >> $(REPORT_FILE); \
+			else \
+				echo "FAILURE: pkg-$$arch:$$version" >> $(REPORT_FILE); \
+			fi; \
 		done; \
 	done
 
@@ -100,6 +121,11 @@ push-pkg: build-pkg
 		for arch in $(ARCH); do \
 			echo "Pushing ${DOMAIN}/${ORG}/${IMGBASE}-pkg-$$arch:$$version"; \
 			podman push ${DOMAIN}/${ORG}/${IMGBASE}-pkg-$$arch:$$version ;\
+			if [ $$? -eq 0 ]; then \
+				echo "SUCCESS (push): pkg-$$arch:$$version" >> $(REPORT_FILE); \
+			else \
+				echo "FAILURE (push): pkg-$$arch:$$version" >> $(REPORT_FILE); \
+			fi; \
 		done; \
 	done
 
@@ -111,24 +137,53 @@ build: manifestmerge-ports-tree manifestmerge-pkg
 				  echo "Building FreeBSD $$version:$$arch for $$dir"; \
 				  IMGNAME=$$(echo $$dir | sed 's|/|-|g') ; \
 				  podman build $(DNS_ARGS) --build-arg FREEBSD_RELEASE=$$version --build-arg ARCHITECTURE=$$arch -f $$dir/Containerfile -t ${DOMAIN}/${ORG}/${IMGBASE}-$$IMGNAME-$$arch:$$version . ;\
+				  if [ $$? -eq 0 ]; then \
+					  echo "SUCCESS: $$dir-$$arch:$$version" >> $(REPORT_FILE); \
+				  else \
+					  echo "FAILURE: $$dir-$$arch:$$version" >> $(REPORT_FILE); \
+				  fi; \
 			fi; \
 		  done; \
 		done; \
 	done
+	@echo ""
+	@echo "--- Build Report ---"
+	@if [ -f $(REPORT_FILE) ]; then \
+		cat $(REPORT_FILE); \
+		if grep -q "FAILURE:" $(REPORT_FILE); then \
+			exit 1; \
+		fi; \
+	else \
+		echo "No builds performed."; \
+	fi
 
 push: build
 	@for version in $(FREEBSD_VERSIONS); do \
 		for arch in $(ARCH); do \
 		  for dir in $(DIR); do \
-		    echo "Pushing FreeBSD $$version:$$arch for $$dir"; \
 			if grep -q "^$$version:$$arch$$" $$dir/RELEASES; then \
 					echo "Pushing FreeBSD $$version:$$arch for $$dir"; \
 					IMGNAME=$$(echo $$dir | sed 's|/|-|g') ; \
 					podman push ${DOMAIN}/${ORG}/${IMGBASE}-$$IMGNAME-$$arch:$$version ;\
+					if [ $$? -eq 0 ]; then \
+						echo "SUCCESS (push): $$dir-$$arch:$$version" >> $(REPORT_FILE); \
+					else \
+						echo "FAILURE (push): $$dir-$$arch:$$version" >> $(REPORT_FILE); \
+					fi; \
 			fi; \
 		  done; \
 		done; \
 	done
+	@echo ""
+	@echo "--- Push Report ---"
+	@if [ -f $(REPORT_FILE) ]; then \
+		cat $(REPORT_FILE); \
+		if grep -q "FAILURE (push):" $(REPORT_FILE); then \
+			exit 1; \
+		fi; \
+	else \
+		echo "No pushes performed."; \
+	fi
 
 manifestmerge: push
 	@for version in $(FREEBSD_VERSIONS); do \
